@@ -17,15 +17,12 @@ def create_if_not_exist(path) -> bool:
 def get_files(path):
   return [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
 
-def get_file_numbers(path):
-  return [int(re.search('\d+|$', f).group()) for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
-
 def get_next_filename(path):
   create_if_not_exist(path)
-  numbers = [int(re.search('\d+|$', n).group()) for n in get_files(path)]
+  numbers = [int(re.search('\d+|$', n).group()) for n in get_files(path) if re.match('^#[\d]{3}(?:\.mp4|\.avi|\.mov|\.mkv)$', n)]
   number = 0
 
-  if not number:
+  if not numbers:
     number = 1
   else:
     number = max(numbers) + 1

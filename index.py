@@ -5,7 +5,7 @@ import sys
 import argparse
 import numpy as np
 
-from read_modelname import get_modelname, write_mask
+from read_modelname import get_modelname, write_mask, get_model_from_filename
 from video_analysis import analyse_video, get_start_frame, get_end_frame, calculate_duration
 from recording import Recording
 from storage import exists, is_folder, get_next_filename
@@ -32,11 +32,18 @@ def analyse_recording(filename, output):
     recording.end_frame = get_end_frame(recording.video)
     recording.duration = calculate_duration(recording.end_frame - recording.start_frame, recording.fps)
 
-    logging.debug("Reading Modelname ...")
-    (recording.ocr_text, recording.ocr_confidence, recording.matched_model, recording.match_similarity, masked_image) = get_modelname(recording.video, recording.start_frame, recording.end_frame)
-    recording.confidence = round(np.mean([recording.ocr_confidence, recording.match_similarity]), 2)
-    recording.masked_image_path = os.path.join('.', 'name-masks', str(recording.uuid) + '.png')
-    write_mask(recording.masked_image_path, masked_image)
+    if get_model_from_filename(recording.original_location):
+      logging.debug("Using Modelname from file ...")
+      recording.confidence = 100
+      recording.match_similarity = 100
+      recording.ocr_text = "FILENAME"
+      recording.matched_model = get_model_from_filename(filename)
+    else:
+      logging.debug("Reading Modelname ...")
+      (recording.ocr_text, recording.ocr_confidence, recording.matched_model, recording.match_similarity, masked_image) = get_modelname(recording.video, recording.start_frame, recording.end_frame)
+      recording.confidence = round(np.mean([recording.ocr_confidence, recording.match_similarity]), 2)
+      recording.masked_image_path = os.path.join('.', 'name-masks', str(recording.uuid) + '.png')
+      write_mask(recording.masked_image_path, masked_image)
 
     recording.sorted_location = get_next_filename(os.path.join(output, recording.matched_model))
   except Exception as e:

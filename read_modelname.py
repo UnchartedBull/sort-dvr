@@ -1,10 +1,9 @@
 import cv2
 import numpy as np
-import pandas as pd
 import pytesseract
 import logging
-import os
 import time
+import re
 
 from fuzzy_match import match_modelname, load_modelnames
 
@@ -50,6 +49,13 @@ def extract_name_from_still(image):
   eroded = erode(dilated);
   masked = apply_mask(eroded);
   return ocr(masked);
+
+def get_model_from_filename(filename):
+  result = re.search('\[(.*)\]', filename)
+  if not result:
+    return None
+  else:
+    return result.group(1)
 
 def get_modelname(recording, start_frame, end_frame):
   frame_to_search = start_frame
