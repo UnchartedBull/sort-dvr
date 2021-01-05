@@ -1,45 +1,48 @@
 import cv2
-import pandas as pd
 import numpy as np
 import logging
 import time
 
 # TODO
-# catch endframe == 0
-# catch startframe == frames
-# catch short videos (< 45s)
 # split videos if uncolorful frames are in between for at least 10s
-# possibly only check each 10th frame for colofulness to improve performance
-# add cut duration
 
-def get_start_frame(dvr):
+def get_start_frame(recording):
   start_time = time.time()
   frame_number = 0
-  dvr.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
+  recording.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
 
-  while True:
-    _, frame = dvr.read()
+  while frame_number < int(recording.get(cv2.CAP_PROP_FRAME_COUNT)) - 1:
+    _, frame = recording.read()
     if image_colorfulness(frame) > 15:
       break
-    frame_number += 1
+    frame_number += 5
+
+  if frame_number > int(recording.get(cv2.CAP_PROP_FRAME_COUNT)) - 60:
+    raise Exception('unable to find start frame')
 
   logging.debug('Found start frame (%s) in %ss', str(frame_number), str(round(time.time() - start_time, 2)))
   return frame_number;
 
-def get_end_frame(dvr):
+def get_end_frame(recording):
   start_time = time.time()
-  frame_number = int(dvr.get(cv2.CAP_PROP_FRAME_COUNT)) - 1;
-  dvr.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
+  frame_number = int(recording.get(cv2.CAP_PROP_FRAME_COUNT)) - 1;
+  recording.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
 
-  while True:
-    _, frame = dvr.read()
+  while frame_number > 0:
+    _, frame = recording.read()
     if image_colorfulness(frame) > 15:
       break
-    frame_number -= 1
-    dvr.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
+    frame_number -= 5
+    recording.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
+
+  if frame_number < 60:
+    raise Exception('unable to find end frame')
+
   logging.debug('Found end frame (%s) in %ss', str(frame_number), str(round(time.time() - start_time, 2)))
   return frame_number;
 
+def calculate_duration(frames, fps):
+  return int(frames / fps)
 
 def image_colorfulness(image):
 	(B, G, R) = cv2.split(image.astype("float"))
@@ -51,21 +54,11 @@ def image_colorfulness(image):
 	meanRoot = np.sqrt((rbMean ** 2) + (ybMean ** 2))
 	return stdRoot + (0.3 * meanRoot)
 
-def analyse_video(dvr_dataframe, dvr):
-  logging.debug("Analysing video %s", dvr_dataframe.index[0])
-  dvr_dataframe.at[dvr_dataframe.index[0], 'fps'] = dvr.get(cv2.CAP_PROP_FPS)
-  dvr_dataframe.at[dvr_dataframe.index[0], 'duration'] = int(dvr.get(cv2.CAP_PROP_FRAME_COUNT) / dvr_dataframe['fps'][0])
-  logging.debug("FPS: %s, Duration: %s", str(dvr_dataframe['fps'][0]), str(dvr_dataframe['duration'][0]))
-  dvr_dataframe.at[dvr_dataframe.index[0], 'start_frame'] = get_start_frame(dvr)
-  dvr_dataframe.at[dvr_dataframe.index[0], 'end_frame'] = get_end_frame(dvr)
-  return dvr_dataframe
+def analyse_video(recording):
+  fps = recording.get(cv2.CAP_PROP_FPS)
+  duration = int(recording.get(cv2.CAP_PROP_FRAME_COUNT) / fps)
+  logging.debug("FPS: %s, Duration: %ss", fps, duration)
 
-if __name__ == "__main__":
-  logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.DEBUG)
-
-  dvr_dataframe = pd.DataFrame(index = ['mock'], columns=['original_location', 'start_frame', 'end_frame', 'fps', 'duration'])
-  dvr_dataframe.at[dvr_dataframe.index[0], 'original_location'] = './test/video-1.mov';
-  dvr = cv2.VideoCapture(dvr_dataframe.iloc[0]['original_location'])
-
-  print(analyse_video(dvr_dataframe, dvr).iloc[0])
-  dvr.release()
+  if duration < 45:
+    raise Exception('video is too short')
+  return (fps, duration)

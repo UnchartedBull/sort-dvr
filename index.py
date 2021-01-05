@@ -1,40 +1,32 @@
-import uuid
-import cv2
-import pandas as pd
 import logging
 import traceback
+import os
 
-from read_modelname import get_modelname
-from video_analysis import analyse_video
+from read_modelname import get_modelname, write_mask
+from video_analysis import analyse_video, get_start_frame, get_end_frame, calculate_duration
+from recording import Recording
+
 
 if __name__ == "__main__":
   logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.DEBUG)
 
-  dvr_dataframe = pd.DataFrame(index = [uuid.uuid1()], columns=['original_location', 'sorted_location', 'start_frame', 'end_frame', 'fps', 'duration', 'ocr_text', 'ocr_confidence', 'masked_image', 'matched_model', 'match_similarity', 'error'])
-  dvr_dataframe.at[dvr_dataframe.index[0], 'original_location'] = './test/video-1.mov';
-  dvr_dataframe.at[dvr_dataframe.index[0], 'start_frame'] = 10
-  dvr_dataframe.at[dvr_dataframe.index[0], 'end_frame'] = 5000
+  recording = Recording('./test/video-1.mov')
 
-  dvr = cv2.VideoCapture(dvr_dataframe.iloc[0]['original_location'])
+  try:
+    logging.debug("Analysing Video ...")
+    (recording.fps, recording.original_duration) = analyse_video(recording.video)
+    recording.start_frame = get_start_frame(recording.video)
+    recording.end_frame = get_end_frame(recording.video)
+    recording.duration = calculate_duration(recording.end_frame - recording.start_frame, recording.fps)
 
-  while True:
-    try:
-      dvr_dataframe = analyse_video(dvr_dataframe, dvr)
-    except:
-      dvr_dataframe.at[dvr_dataframe.index[0], 'error'] = 'Can\'t determine start / end frame'
-      logging.error('Can\'t determine start / end frame for video %s', str(dvr_dataframe.index[0]))
-      traceback.print_exc()
-      break
+    logging.debug("Reading Modelname ...")
+    (recording.ocr_text, recording.ocr_confidence, recording.matched_model, recording.match_similarity, masked_image) = get_modelname(recording.video, recording.start_frame, recording.end_frame)
+    recording.masked_image_path = os.path.join('.', 'name-masks', str(recording.uuid) + '.png')
+    write_mask(recording.masked_image_path, masked_image)
 
-    try:
-      dvr_dataframe = get_modelname(dvr_dataframe, dvr)
-    except:
-      dvr_dataframe.at[dvr_dataframe.index[0], 'error'] = 'Can\'t determine model name'
-      logging.error('Can\'t determine model name for video %s', str(dvr_dataframe.index[0]))
-      traceback.print_exc()
-      break
+    recording.sorted_location = os.path.join('.', 'sorted-tmp', recording.matched_model, '#001.mp4')
+  except Exception as e:
+    recording.error = e
+    traceback.print_exc()
 
-    break
-  dvr.release();
-  logging.debug('Analysis for video %s finished', str(dvr_dataframe.index[0]))
-  logging.debug(dvr_dataframe.iloc[0])
+  logging.debug(recording)
