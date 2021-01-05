@@ -4,6 +4,14 @@ import numpy as np
 import logging
 import time
 
+# TODO
+# catch endframe == 0
+# catch startframe == frames
+# catch short videos (< 45s)
+# split videos if uncolorful frames are in between for at least 10s
+# possibly only check each 10th frame for colofulness to improve performance
+# add cut duration
+
 def get_start_frame(dvr):
   start_time = time.time()
   frame_number = 0
@@ -59,5 +67,5 @@ if __name__ == "__main__":
   dvr_dataframe.at[dvr_dataframe.index[0], 'original_location'] = './test/video-1.mov';
   dvr = cv2.VideoCapture(dvr_dataframe.iloc[0]['original_location'])
 
-  print(analyse_video(dvr_dataframe, dvr))
+  print(analyse_video(dvr_dataframe, dvr).iloc[0])
   dvr.release()
