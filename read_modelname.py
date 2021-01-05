@@ -2,7 +2,11 @@ import cv2
 import numpy as np
 import pandas as pd
 import pytesseract
+import logging
+import os
+import time
 
+MASK_FOLDER = os.path.join('.', 'name-masks')
 
 def read_image(filename):
   return cv2.imread(filename)
@@ -21,21 +25,25 @@ def apply_mask(image):
   return cv2.inRange(image, lower_bound, upper_bound)
 
 def ocr(image, dvr_dataframe):
+  start_time = time.time()
   custom_oem_psm_config = r'--oem 1 --psm 4'
   detected_text = pytesseract.image_to_data(image, output_type='data.frame', config=custom_oem_psm_config)
   detected_text = detected_text[detected_text.conf != -1]
   dvr_dataframe.at[dvr_dataframe.index[0], 'ocr_text'] = detected_text.groupby('page_num')['text'].agg(' '.join)[1]
   dvr_dataframe.at[dvr_dataframe.index[0], 'ocr_confidence'] = detected_text.groupby('page_num')['conf'].mean()[1]
+  logging.debug('OCR detected %s (%s%% confidence) in %ss', dvr_dataframe['ocr_text'][0], dvr_dataframe['ocr_confidence'][0], str(round(time.time() - start_time, 2)))
+
 
   return dvr_dataframe
 
-  # return detected_text.groupby('page_num')['text'].agg(' '.join)[1]
-  return detected_text.groupby('page_num')['conf'].mean()
-
 def get_modelname(image, dvr_dataframe):
+  logging.debug("Getting model name for video %s", dvr_dataframe.index[0])
   dilated = dilate(image);
   eroded = erode(dilated);
   masked = apply_mask(eroded);
+  image_path = os.path.join(MASK_FOLDER, str(dvr_dataframe.index[0]) + '.png')
+  cv2.imwrite(image_path, masked)
+  logging.debug("Generated model name image mask at %s", image_path)
   return ocr(masked, dvr_dataframe);
 
 if __name__ == "__main__":
