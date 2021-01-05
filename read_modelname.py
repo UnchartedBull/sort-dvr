@@ -80,8 +80,6 @@ def get_modelname(recording, start_frame, end_frame):
 
     frame_to_search += SEARCH_DISTANCE
 
-  logging.info('Matched model: %s (%s%% confidence, %s%% similarity)', matched_model, str(ocr_confidence), str(match_similarity))
-
   if ocr_confidence < 75 or match_similarity < 75:
     raise Exception('unsure result')
 

@@ -33,11 +33,12 @@ class Recording:
     self.masked_image_path = None
     self.matched_model = None
     self.match_similarity = 0
+    self.confidence = 0
     self.error = None
 
     self._open_video()
 
-    logging.debug("Start processing video %s (%s)", self.original_location, self._uuid)
+    logging.info("Start processing video %s (%s)", self.original_location, self._uuid)
 
   def __str__(self) -> str:
     return f"""
@@ -50,12 +51,13 @@ class Recording:
   Original Duration:    {self.original_duration}s
   Duration:             {self.duration}s
   OCR Text:             {self.ocr_text}
-  OCR Confidence:       {self.ocr_confidence}
+  OCR Confidence:       {self.ocr_confidence}%
   Masked Image Path:    {self.masked_image_path}
   Matched Model:        {self.matched_model}
-  Match Similarity:     {self.match_similarity}
+  Match Similarity:     {self.match_similarity}%
   Error:                {self.error}
   Processing Time:      {self.processing_time}s
+  Confidence:           {self.confidence}%
     """
 
   def has_errors(self) -> bool:
