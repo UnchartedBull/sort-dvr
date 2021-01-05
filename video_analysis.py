@@ -6,6 +6,8 @@ import time
 # TODO
 # split videos if uncolorful frames are in between for at least 10s
 
+MIN_VIDEO_DURATION = 60
+
 def get_start_frame(recording):
   start_time = time.time()
   frame_number = 0
@@ -59,6 +61,6 @@ def analyse_video(recording):
   duration = int(recording.get(cv2.CAP_PROP_FRAME_COUNT) / fps)
   logging.debug("FPS: %s, Duration: %ss", fps, duration)
 
-  if duration < 45:
+  if duration < MIN_VIDEO_DURATION:
     raise Exception('video is too short')
   return (fps, duration)

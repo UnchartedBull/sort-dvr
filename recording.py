@@ -3,6 +3,8 @@ import time
 import cv2
 import logging
 
+from storage import is_video
+
 class Recording:
 
   @property
@@ -36,8 +38,6 @@ class Recording:
     self.confidence = 0
     self.error = None
 
-    self._open_video()
-
     logging.info("Start processing video %s (%s)", self.original_location, self._uuid)
 
   def __str__(self) -> str:
@@ -63,8 +63,11 @@ class Recording:
   def has_errors(self) -> bool:
     return self.error is not None
 
-  def _open_video(self) -> None:
+  def open_video(self) -> None:
+    if not is_video(self.original_location):
+      raise Exception('file is no video (.mp4, .mov, .avi, .mkv)')
     self._video = cv2.VideoCapture(self.original_location)
 
   def close_video(self) -> None:
-    self._video.release()
+    if self._video is not None:
+      self._video.release()

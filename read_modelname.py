@@ -71,7 +71,7 @@ def get_modelname(recording, start_frame, end_frame):
     (match, similarity) = match_modelname(text)
 
     if similarity > match_similarity and confidence > ocr_confidence - 10:
-      logging.debug('Higher similarity for %s (%s%% confidence, %s%% similarity)', match, str(confidence), str(similarity))
+      logging.debug('Better match: %s (%s%% confidence, %s%% similarity)', match, str(confidence), str(similarity))
       ocr_text = text
       ocr_confidence = confidence
       masked_image = image
