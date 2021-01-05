@@ -16,7 +16,7 @@ from storage import exists, is_folder, get_next_filename, get_files, move_error_
 
 failed_videos = []
 
-def analyse_recording(filename, output):
+def analyse_recording(filename, output, unsure):
   global failed_videos
 
   recording = Recording(filename)
@@ -49,15 +49,15 @@ def analyse_recording(filename, output):
 
   if recording.has_errors():
     failed_videos.append(recording)
-    move_error_file(recording.original_location)
+    move_error_file(recording.original_location, unsure)
     logging.warning('Could not process video: %s', recording.error)
   else:
     logging.info("Processing finished: %s (%s%% confidence, %ss) - %s", recording.matched_model, str(recording.confidence), str(recording.processing_time), recording.sorted_location)
     logging.debug(recording)
   recording.close_video()
 
-def analyse_folder(folder, output):
-  [analyse_recording(os.path.join(folder, file), output) for file in get_files(folder)]
+def analyse_folder(folder, output, unsure):
+  [analyse_recording(os.path.join(folder, file), output, unsure) for file in get_files(folder)]
   if (len(failed_videos) > 0):
     logging.warning(str(len(failed_videos)) + " video(s) failed to process, please check logs")
 
@@ -65,6 +65,7 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser(description='easily sort your dvr recordings without any effort')
   parser.add_argument('input', type=str, help="input folder or file which should be processed")
   parser.add_argument('output', type=str, help='output folder to which the sorted recordings should be saved')
+  parser.add_argument('unsure', type=str, help='unsure folder which is used to store videos that could not be processed')
   parser.add_argument('-d', '--debug', help="turn on debug log statements", action="store_true")
 
   args = parser.parse_args()
@@ -76,6 +77,6 @@ if __name__ == "__main__":
     sys.exit(-1)
 
   if is_folder(args.input):
-    analyse_folder(args.input, args.output)
+    analyse_folder(args.input, args.output, args.unsure)
   else:
-    analyse_recording(args.input, args.output)
+    analyse_recording(args.input, args.output, args.unsure)
