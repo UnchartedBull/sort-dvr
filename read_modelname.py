@@ -32,15 +32,15 @@ def ocr(image, dvr_dataframe):
   # return detected_text.groupby('page_num')['text'].agg(' '.join)[1]
   return detected_text.groupby('page_num')['conf'].mean()
 
-def main(image, dvr_dataframe):
+def get_modelname(image, dvr_dataframe):
   dilated = dilate(image);
   eroded = erode(dilated);
   masked = apply_mask(eroded);
   return ocr(masked, dvr_dataframe);
 
 if __name__ == "__main__":
-  dvr_dataframe = pd.DataFrame(index = ['mock'], columns=['original_location', 'sorted_location', 'ocr_text', 'ocr_confidence', 'matched_text', 'fuzzy_score', 'successful'])
+  dvr_dataframe = pd.DataFrame(index = ['mock'], columns=['original_location', 'ocr_text', 'ocr_confidence'])
   dvr_dataframe.at[dvr_dataframe.index[0], 'original_location'] = './test/image-3.png';
 
   image = read_image(dvr_dataframe.iloc[0]['original_location'])
-  print(main(image, dvr_dataframe))
+  print(get_modelname(image, dvr_dataframe))
