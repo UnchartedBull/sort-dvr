@@ -43,19 +43,21 @@ def image_colorfulness(image):
 	meanRoot = np.sqrt((rbMean ** 2) + (ybMean ** 2))
 	return stdRoot + (0.3 * meanRoot)
 
-def analyse_video(dvr_dataframe):
+def analyse_video(dvr_dataframe, dvr):
   logging.debug("Analysing video %s", dvr_dataframe.index[0])
-  dvr = cv2.VideoCapture(dvr_dataframe.iloc[0]['original_location'])
   dvr_dataframe.at[dvr_dataframe.index[0], 'fps'] = dvr.get(cv2.CAP_PROP_FPS)
   dvr_dataframe.at[dvr_dataframe.index[0], 'duration'] = int(dvr.get(cv2.CAP_PROP_FRAME_COUNT) / dvr_dataframe['fps'][0])
   logging.debug("FPS: %s, Duration: %s", str(dvr_dataframe['fps'][0]), str(dvr_dataframe['duration'][0]))
   dvr_dataframe.at[dvr_dataframe.index[0], 'start_frame'] = get_start_frame(dvr)
   dvr_dataframe.at[dvr_dataframe.index[0], 'end_frame'] = get_end_frame(dvr)
-  dvr.release()
   return dvr_dataframe
 
 if __name__ == "__main__":
+  logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.DEBUG)
+
   dvr_dataframe = pd.DataFrame(index = ['mock'], columns=['original_location', 'start_frame', 'end_frame', 'fps', 'duration'])
   dvr_dataframe.at[dvr_dataframe.index[0], 'original_location'] = './test/video-1.mov';
+  dvr = cv2.VideoCapture(dvr_dataframe.iloc[0]['original_location'])
 
-  analyse_video(dvr_dataframe)
+  print(analyse_video(dvr_dataframe, dvr))
+  dvr.release()
