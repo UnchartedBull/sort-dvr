@@ -8,13 +8,11 @@ import numpy as np
 from read_modelname import get_modelname, write_mask, get_model_from_filename
 from video_analysis import analyse_video, get_start_frame, get_end_frame, calculate_duration
 from recording import Recording
-from storage import exists, is_folder, get_next_filename
+from storage import exists, is_folder, get_next_filename, get_files
 
 # TODO
 # Render files
 # Save unsure files
-# Read whole folder
-# Final stats
 # Database
 
 failed_videos = []
@@ -58,6 +56,11 @@ def analyse_recording(filename, output):
     logging.debug(recording)
   recording.close_video()
 
+def analyse_folder(folder, output):
+  [analyse_recording(os.path.join(folder, file), output) for file in get_files(folder)]
+  if (len(failed_videos) > 0):
+    logging.warning(str(len(failed_videos)) + " video(s) failed to process, please check logs")
+
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description='easily sort your dvr recordings without any effort')
   parser.add_argument('input', type=str, help="input folder or file which should be processed")
@@ -73,6 +76,6 @@ if __name__ == "__main__":
     sys.exit(-1)
 
   if is_folder(args.input):
-    print("tbd.")
+    analyse_folder(args.input, args.output)
   else:
     analyse_recording(args.input, args.output)
