@@ -1,6 +1,9 @@
 import os
 from pathlib import Path
 import re
+import logging
+
+UNSURE_PATH = os.path.join('.', 'unsure')
 
 def exists(path) -> bool:
   return os.path.exists(path)
@@ -28,3 +31,9 @@ def get_next_filename(path):
     number = max(numbers) + 1
 
   return os.path.join(path, '#' + str(number).zfill(3) + '.mp4')
+
+def move_error_file(path):
+  create_if_not_exist(UNSURE_PATH)
+  new_location = os.path.join(UNSURE_PATH, os.path.split(path)[1])
+  logging.debug("Moving unsure file from %s to %s", path, new_location)
+  os.rename(path, new_location)

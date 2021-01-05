@@ -131,6 +131,7 @@ dmypy.json
 test/
 input/
 output/
+unsure/
 name-masks/
 modelnames.csv
 .DS_Store

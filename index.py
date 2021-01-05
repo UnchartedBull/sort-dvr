@@ -8,11 +8,10 @@ import numpy as np
 from read_modelname import get_modelname, write_mask, get_model_from_filename
 from video_analysis import analyse_video, get_start_frame, get_end_frame, calculate_duration
 from recording import Recording
-from storage import exists, is_folder, get_next_filename, get_files
+from storage import exists, is_folder, get_next_filename, get_files, move_error_file
 
 # TODO
 # Render files
-# Save unsure files
 # Database
 
 failed_videos = []
@@ -50,6 +49,7 @@ def analyse_recording(filename, output):
 
   if recording.has_errors():
     failed_videos.append(recording)
+    move_error_file(recording.original_location)
     logging.warning('Could not process video: %s', recording.error)
   else:
     logging.info("Processing finished: %s (%s%% confidence, %ss) - %s", recording.matched_model, str(recording.confidence), str(recording.processing_time), recording.sorted_location)
