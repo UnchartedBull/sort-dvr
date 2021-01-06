@@ -5,43 +5,44 @@ import logging
 
 from storage import is_video
 
+
 class Recording:
+    @property
+    def uuid(self):
+        return self._uuid
 
-  @property
-  def uuid(self):
-    return self._uuid
+    @property
+    def processing_time(self):
+        return str(round(time.time() - self._start, 2))
 
-  @property
-  def processing_time(self):
-    return str(round(time.time() - self._start, 2))
+    @property
+    def video(self):
+        return self._video
 
-  @property
-  def video(self):
-    return self._video
+    def __init__(self, location) -> None:
+        self._uuid = uuid.uuid1()
+        self._start = time.time()
+        self._video = None
+        self.original_location = location
+        self.sorted_location = None
+        self.start_frame = None
+        self.end_frame = None
+        self.fps = 0
+        self.original_duration = 0
+        self.duration = 0
+        self.ocr_text = None
+        self.ocr_confidence = 0
+        self.masked_image_path = None
+        self.matched_model = None
+        self.match_similarity = 0
+        self.confidence = 0
+        self.error = None
 
-  def __init__(self, location) -> None:
-    self._uuid = uuid.uuid1()
-    self._start = time.time()
-    self._video = None
-    self.original_location = location
-    self.sorted_location = None
-    self.start_frame = None
-    self.end_frame = None
-    self.fps = 0
-    self.original_duration = 0
-    self.duration = 0
-    self.ocr_text = None
-    self.ocr_confidence = 0
-    self.masked_image_path = None
-    self.matched_model = None
-    self.match_similarity = 0
-    self.confidence = 0
-    self.error = None
+        logging.info("Start processing video %s (%s)", self.original_location,
+                     self._uuid)
 
-    logging.info("Start processing video %s (%s)", self.original_location, self._uuid)
-
-  def __str__(self) -> str:
-    return f"""
+    def __str__(self) -> str:
+        return f"""
   UUID:                 {self._uuid}
   Original Location:    {self.original_location}
   Sorted Location:      {self.sorted_location}
@@ -60,14 +61,14 @@ class Recording:
   Confidence:           {self.confidence}%
     """
 
-  def has_errors(self) -> bool:
-    return self.error is not None
+    def has_errors(self) -> bool:
+        return self.error is not None
 
-  def open_video(self) -> None:
-    if not is_video(self.original_location):
-      raise Exception('file is no video (.mp4, .mov, .avi, .mkv)')
-    self._video = cv2.VideoCapture(self.original_location)
+    def open_video(self) -> None:
+        if not is_video(self.original_location):
+            raise Exception("file is no video (.mp4, .mov, .avi, .mkv)")
+        self._video = cv2.VideoCapture(self.original_location)
 
-  def close_video(self) -> None:
-    if self._video is not None:
-      self._video.release()
+    def close_video(self) -> None:
+        if self._video is not None:
+            self._video.release()
