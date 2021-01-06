@@ -2,6 +2,7 @@ import uuid
 import time
 import cv2
 import logging
+import datetime
 
 from storage import is_video
 
@@ -13,7 +14,7 @@ class Recording:
 
     @property
     def processing_time(self):
-        return str(round(time.time() - self._start, 2))
+        return time.time() - self._start
 
     @property
     def video(self):
@@ -30,6 +31,9 @@ class Recording:
         self.fps = 0
         self.original_duration = 0
         self.duration = 0
+        self.average_bitrate = 0
+        self.original_size = 0
+        self.size = 0
         self.ocr_text = None
         self.ocr_confidence = 0
         self.masked_image_path = None
@@ -49,15 +53,19 @@ class Recording:
   Start Frame:          {self.start_frame}
   End Frame:            {self.end_frame}
   FPS:                  {self.fps}
-  Original Duration:    {self.original_duration}s
-  Duration:             {self.duration}s
+  Original Duration:    {str(datetime.timedelta(seconds=self.original_duration))}
+  Duration:             {str(datetime.timedelta(seconds=self.duration))}
+  Average Bitrate:      {self.average_bitrate}Kbps
+  Original Size:        {self.original_size}MB
+  New Size:             {self.size}MB
+  Compression:          {round(self.size / max(self.original_size, 1) * 100, 1)}%
   OCR Text:             {self.ocr_text}
   OCR Confidence:       {self.ocr_confidence}%
   Masked Image Path:    {self.masked_image_path}
   Matched Model:        {self.matched_model}
   Match Similarity:     {self.match_similarity}%
   Error:                {self.error}
-  Processing Time:      {self.processing_time}s
+  Processing Time:      {str(datetime.timedelta(seconds=self.processing_time))}
   Confidence:           {self.confidence}%
     """
 

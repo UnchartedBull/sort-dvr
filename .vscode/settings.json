@@ -3,5 +3,6 @@
   "python.formatting.provider": "yapf",
   "[python]": {
     "editor.defaultFormatter": null
-  }
+  },
+  "editor.tabSize": 4
 }

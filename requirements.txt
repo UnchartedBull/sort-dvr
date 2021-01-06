@@ -8,8 +8,10 @@ pandas==1.2.0
 pathspec==0.8.1
 Pillow==8.1.0
 pycodestyle==2.6.0
+pyee==8.1.0
 pytesseract==0.3.7
 python-dateutil==2.8.1
+python-ffmpeg==1.0.11
 python-Levenshtein==0.12.0
 pytz==2020.5
 regex==2020.11.13

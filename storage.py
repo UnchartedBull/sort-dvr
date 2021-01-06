@@ -43,6 +43,13 @@ def get_next_filename(path):
     return os.path.join(path, "#" + str(number).zfill(3) + ".mp4")
 
 
+def get_file_size(path):
+    if exists(path) and not is_folder(path):
+        return round(round(os.path.getsize(path) / (1024 * 1024), 3))
+    else:
+        return 0
+
+
 def move_error_file(path, unsure):
     create_if_not_exist(unsure)
     new_location = os.path.join(unsure, os.path.split(path)[1])

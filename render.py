@@ -1,7 +1,10 @@
 import subprocess
 import logging
 import time
-import shlex
+import asyncio
+from ffmpeg import FFmpeg
+
+average_bitrate = 0
 
 
 def calculate_timestamp_fps(frame, fps):
@@ -13,55 +16,58 @@ def render_video(
     output_path,
     start_time,
     end_time,
+    frames_to_render,
     quality=30,
     audio_bitrate="32k",
 ):
+    global average_bitrate
+    average_bitrate = 0
+
     start = time.time()
-    process = subprocess.Popen(
-        [
-            "ffmpeg",
-            "-i",
-            input_path,
-            "-c:v",
-            "libx265",
-            "-preset",
-            "medium",
-            "-crf",
-            str(quality),
-            "-tag:v",
-            "hvc1",
-            "-c:a",
-            "eac3",
-            "-b:a",
-            audio_bitrate,
-            "-vf",
-            "scale=860x720:flags=lanczos",
-            "-ss",
-            str(start_time),
-            "-t",
-            str(end_time),
-            output_path,
-        ],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
 
-    while True:
-        stdout = process.stdout.readline()
+    ffmpeg = FFmpeg().option('y').input(input_path).output(
+        output_path, {
+            'codec:v': 'libx265',
+            'codec:a': 'eac3',
+            'tag:v': 'hvc1',
+            'preset': 'medium',
+            'crf': quality,
+            'b:a': audio_bitrate,
+            'vf': 'scale=860x720:flags=lanczos',
+            'ss': start_time,
+            't': end_time
+        })
 
-        log_replace(stdout.decode("utf-8").strip())
+    @ffmpeg.on('progress')
+    def on_progress(progress):
+        global average_bitrate
 
-        return_code = process.poll()
-        if return_code is not None:
-            if return_code != 0:
-                logging.error("FFMPEG exited with error code " +
-                              str(return_code))
-                logging.debug(process.stderr.readlines())
-                raise Exception("rendering failed")
-            break
+        print(progress)
+        if average_bitrate == 0:
+            average_bitrate = progress.bitrate
+        else:
+            average_bitrate = round((average_bitrate + progress.bitrate) / 2)
 
-    logging.debug("Rendering finished in %ss",
+    @ffmpeg.on('completed')
+    def on_completed():
+        print('Completed')
+
+    @ffmpeg.on('terminated')
+    def on_terminated():
+        raise Exception('ffmpeg was externally terminated')
+
+    @ffmpeg.on('error')
+    def on_error(code):
+        raise Exception('ffmpeg exited with ' + code)
+
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(ffmpeg.execute())
+    loop.close()
+
+    logging.debug("Finished rendering in in %ss",
                   str(round(time.time() - start, 2)))
+
+    return average_bitrate
 
 
 def log_replace(text):

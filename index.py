@@ -12,16 +12,19 @@ from video_analysis import (
     calculate_duration,
 )
 from recording import Recording
-from storage import exists, is_folder, get_next_filename, get_files, move_error_file
+from storage import exists, is_folder, get_next_filename, get_files, move_error_file, get_file_size
 from render import render_video, calculate_timestamp_fps
 
 # TODO
 # Database
+# correct aspect ratio
+# progress bar
+# compressed stats screen
 
 failed_videos = []
 
 
-def analyse_recording(filename, output, unsure):
+def analyse_recording(filename, output, unsure, dry):
     global failed_videos
 
     recording = Recording(filename)
@@ -63,12 +66,14 @@ def analyse_recording(filename, output, unsure):
         logging.debug("Rendering Video ...")
         recording.sorted_location = get_next_filename(
             os.path.join(output, recording.matched_model))
-        render_video(
-            recording.original_location,
-            recording.sorted_location,
-            calculate_timestamp_fps(recording.start_frame, recording.fps),
-            calculate_timestamp_fps(recording.end_frame, recording.fps),
-        )
+        if not dry:
+            recording.average_bitrate = render_video(
+                recording.original_location, recording.sorted_location,
+                calculate_timestamp_fps(recording.start_frame, recording.fps),
+                calculate_timestamp_fps(recording.end_frame, recording.fps),
+                recording.end_frame - recording.start_frame)
+        recording.original_size = get_file_size(recording.original_location)
+        recording.size = get_file_size(recording.sorted_location)
 
     except Exception as e:
         recording.error = e
@@ -90,9 +95,9 @@ def analyse_recording(filename, output, unsure):
     recording.close_video()
 
 
-def analyse_folder(folder, output, unsure):
+def analyse_folder(folder, output, unsure, dry):
     [
-        analyse_recording(os.path.join(folder, file), output, unsure)
+        analyse_recording(os.path.join(folder, file), output, unsure, dry)
         for file in get_files(folder)
     ]
     if len(failed_videos) > 0:
@@ -118,6 +123,9 @@ if __name__ == "__main__":
         help=
         "unsure folder which is used to store videos that could not be processed",
     )
+    parser.add_argument("--dry",
+                        help="don't render or move video files, just analyse",
+                        action="store_true")
     parser.add_argument("-d",
                         "--debug",
                         help="turn on debug log statements",
@@ -135,6 +143,6 @@ if __name__ == "__main__":
         sys.exit(-1)
 
     if is_folder(args.input):
-        analyse_folder(args.input, args.output, args.unsure)
+        analyse_folder(args.input, args.output, args.unsure, args.dry)
     else:
-        analyse_recording(args.input, args.output, args.unsure)
+        analyse_recording(args.input, args.output, args.unsure, args.dry)
