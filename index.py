@@ -14,12 +14,13 @@ from render import render_video, calculate_timestamp_fps
 from summary import print_summary
 
 # TODO
+# split videos if uncolorful frames are in between for at least 10s
 # Database
 
 recordings = []
 
 
-def analyse_recording(filename, output, unsure, dry):
+def analyse_recording(filename, output, unsure, model, dry):
     global recordings
 
     recording = Recording(filename)
@@ -36,13 +37,13 @@ def analyse_recording(filename, output, unsure, dry):
         recording.duration = calculate_duration(
             recording.end_frame - recording.start_frame, recording.fps)
 
-        if get_model_from_filename(recording.original_location):
+        if get_model_from_filename(recording.original_location) and not model:
             logging.debug("Using Modelname from file ...")
             recording.confidence = 100
             recording.match_similarity = 100
             recording.ocr_text = "FILENAME"
             recording.matched_model = get_model_from_filename(filename)
-        else:
+        elif not model:
             logging.debug("Reading Modelname ...")
             (
                 recording.ocr_text,
@@ -59,6 +60,11 @@ def analyse_recording(filename, output, unsure, dry):
                 ".", "name-masks",
                 str(recording.uuid) + ".png")
             write_mask(recording.masked_image_path, masked_image)
+        else:
+            recording.confidence = 100
+            recording.match_similarity = 100
+            recording.ocr_text = "PARAMETER"
+            recording.matched_model = model
 
         logging.debug("Rendering Video ...")
         recording.sorted_location = get_next_filename(
@@ -88,20 +94,17 @@ def analyse_recording(filename, output, unsure, dry):
             str(round(recording.processing_time, 2)),
             recording.sorted_location,
         )
-        logging.debug(recording)
+
+    logging.debug(recording)
+    recording.processing_finished()
     recordings.append(recording)
-    recording.close_video()
 
 
-def analyse_folder(folder, output, unsure, dry):
+def analyse_folder(folder, output, unsure, model, dry):
     [
-        analyse_recording(os.path.join(folder, file), output, unsure, dry)
-        for file in get_files(folder)
+        analyse_recording(os.path.join(folder, file), output, unsure, model,
+                          dry) for file in get_files(folder)
     ]
-    # if len(recordings) > 0:
-    #     logging.warning(
-    #         str(len(recordings)) +
-    #         " video(s) failed to process, please check logs")
 
 
 if __name__ == "__main__":
@@ -124,6 +127,7 @@ if __name__ == "__main__":
     parser.add_argument("--dry",
                         help="don't render or move video files, just analyse",
                         action="store_true")
+    parser.add_argument("--model", help="manually specify model (skip OCR)")
     parser.add_argument("-d",
                         "--debug",
                         help="turn on debug log statements",
@@ -139,8 +143,10 @@ if __name__ == "__main__":
         sys.exit(-1)
 
     if is_folder(args.input):
-        analyse_folder(args.input, args.output, args.unsure, args.dry)
+        analyse_folder(args.input, args.output, args.unsure, args.model,
+                       args.dry)
     else:
-        analyse_recording(args.input, args.output, args.unsure, args.dry)
+        analyse_recording(args.input, args.output, args.unsure, args.model,
+                          args.dry)
 
     print_summary(recordings)

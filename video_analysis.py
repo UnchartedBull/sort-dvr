@@ -3,9 +3,6 @@ import numpy as np
 import logging
 import time
 
-# TODO
-# split videos if uncolorful frames are in between for at least 10s
-
 MIN_VIDEO_DURATION = 60
 
 

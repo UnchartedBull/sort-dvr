@@ -1,4 +1,3 @@
-from fuzzy_match import match_modelname
 from tabulate import tabulate
 import logging
 import datetime
@@ -13,8 +12,7 @@ def print_summary(recordings):
         f'{str(datetime.timedelta(seconds=recording.duration))}h',
         recording.matched_model if recording.matched_model else '???',
         f'{recording.confidence}%', f'{recording.size}MB',
-        f'{round(recording.size / max(recording.original_size, 1) * 100, 1)}%',
-        recording.original_location,
+        f'{recording.compression}%', recording.original_location,
         recording.sorted_location if recording.sorted_location else '---',
         f'{str(datetime.timedelta(seconds=recording.processing_time))}',
         recording.error

@@ -14,16 +14,25 @@ class Recording:
 
     @property
     def processing_time(self):
-        return time.time() - self._start
+        if self._processing_time:
+            return self._processing_time
+        else:
+            return time.time() - self._start
 
     @property
     def video(self):
         return self._video
 
+    @property
+    def compression(self):
+        relative_size = round(self.size / max(self.original_size, 1) * 100, 1)
+        return 100 - relative_size if relative_size > 0 and relative_size < 100 else 100
+
     def __init__(self, location) -> None:
         self._uuid = uuid.uuid1()
         self._start = time.time()
         self._video = None
+        self._processing_time = None
         self.original_location = location
         self.sorted_location = None
         self.start_frame = None
@@ -62,7 +71,7 @@ class Recording:
   Average Bitrate:      {self.average_bitrate}Kbps
   Original Size:        {self.original_size}MB
   New Size:             {self.size}MB
-  Compression:          {round(self.size / max(self.original_size, 1) * 100, 1)}%
+  Compression:          {self.compression}%
   OCR Text:             {self.ocr_text}
   OCR Confidence:       {self.ocr_confidence}%
   Masked Image Path:    {self.masked_image_path}
@@ -81,6 +90,8 @@ class Recording:
             raise Exception("file is no video (.mp4, .mov, .avi, .mkv)")
         self._video = cv2.VideoCapture(self.original_location)
 
-    def close_video(self) -> None:
+    def processing_finished(self) -> None:
         if self._video is not None:
             self._video.release()
+        if self._processing_time is None:
+            self._processing_time = self.processing_time

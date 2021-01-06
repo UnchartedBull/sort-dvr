@@ -71,7 +71,7 @@ def render_video(
 
     loop = asyncio.get_event_loop()
     loop.run_until_complete(ffmpeg.execute())
-    loop.close()
+    # loop.close()
     progressbar.close()
 
     logging.debug("Finished rendering in in %ss",

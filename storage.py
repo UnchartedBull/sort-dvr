@@ -22,9 +22,11 @@ def create_if_not_exist(path) -> bool:
 
 
 def get_files(path):
-    return [
+    files = [
         f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))
     ]
+    files.sort(reverse=False)
+    return files
 
 
 def get_next_filename(path):
