@@ -31,6 +31,8 @@ class Recording:
         self.fps = 0
         self.original_duration = 0
         self.duration = 0
+        self.original_dimension = None
+        self.dimension = None
         self.average_bitrate = 0
         self.original_size = 0
         self.size = 0
@@ -55,6 +57,8 @@ class Recording:
   FPS:                  {self.fps}
   Original Duration:    {str(datetime.timedelta(seconds=self.original_duration))}
   Duration:             {str(datetime.timedelta(seconds=self.duration))}
+  Original Dimension:   {self.original_dimension}
+  Dimension:            {self.dimension}
   Average Bitrate:      {self.average_bitrate}Kbps
   Original Size:        {self.original_size}MB
   New Size:             {self.size}MB

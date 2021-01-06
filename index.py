@@ -1,24 +1,19 @@
 import logging
+import coloredlogs
 import os
 import sys
 import argparse
 import numpy as np
 
 from read_modelname import get_modelname, write_mask, get_model_from_filename
-from video_analysis import (
-    analyse_video,
-    get_start_frame,
-    get_end_frame,
-    calculate_duration,
-)
+from video_analysis import (analyse_video, get_start_frame, get_end_frame,
+                            calculate_duration, get_dimsension)
 from recording import Recording
 from storage import exists, is_folder, get_next_filename, get_files, move_error_file, get_file_size
 from render import render_video, calculate_timestamp_fps
 
 # TODO
 # Database
-# correct aspect ratio
-# progress bar
 # compressed stats screen
 
 failed_videos = []
@@ -34,6 +29,8 @@ def analyse_recording(filename, output, unsure, dry):
         logging.debug("Analysing Video ...")
         (recording.fps,
          recording.original_duration) = analyse_video(recording.video)
+        (recording.original_dimension,
+         recording.dimension) = get_dimsension(recording.video)
         recording.start_frame = get_start_frame(recording.video)
         recording.end_frame = get_end_frame(recording.video)
         recording.duration = calculate_duration(
@@ -71,7 +68,8 @@ def analyse_recording(filename, output, unsure, dry):
                 recording.original_location, recording.sorted_location,
                 calculate_timestamp_fps(recording.start_frame, recording.fps),
                 calculate_timestamp_fps(recording.end_frame, recording.fps),
-                recording.end_frame - recording.start_frame)
+                recording.end_frame - recording.start_frame,
+                recording.dimension)
         recording.original_size = get_file_size(recording.original_location)
         recording.size = get_file_size(recording.sorted_location)
 
@@ -133,10 +131,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    logging.basicConfig(
-        format="%(asctime)s %(levelname)s %(message)s",
-        level=logging.DEBUG if args.debug else logging.INFO,
-    )
+    coloredlogs.install(fmt="%(asctime)s %(levelname)s %(message)s",
+                        level=logging.DEBUG if args.debug else logging.INFO)
 
     if not exists(args.input):
         logging.error("File / Folder does not exist")

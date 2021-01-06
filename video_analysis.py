@@ -54,6 +54,16 @@ def get_end_frame(recording):
     return frame_number
 
 
+def get_dimsension(recording, new_height=720):
+    original_width = recording.get(cv2.CAP_PROP_FRAME_WIDTH)
+    original_height = recording.get(cv2.CAP_PROP_FRAME_HEIGHT)
+
+    return (
+        f'{int(original_width)}x{int(original_height)}',
+        f'{int((original_width / original_height) * new_height)}x{int(new_height)}'
+    )
+
+
 def calculate_duration(frames, fps):
     return int(frames / fps)
 
