@@ -11,16 +11,16 @@ from video_analysis import (analyse_video, get_start_frame, get_end_frame,
 from recording import Recording
 from storage import exists, is_folder, get_next_filename, get_files, move_error_file, get_file_size
 from render import render_video, calculate_timestamp_fps
+from summary import print_summary
 
 # TODO
 # Database
-# compressed stats screen
 
-failed_videos = []
+recordings = []
 
 
 def analyse_recording(filename, output, unsure, dry):
-    global failed_videos
+    global recordings
 
     recording = Recording(filename)
     try:
@@ -78,7 +78,6 @@ def analyse_recording(filename, output, unsure, dry):
         logging.debug(e, exc_info=True)
 
     if recording.has_errors():
-        failed_videos.append(recording)
         move_error_file(recording.original_location, unsure)
         logging.warning("Could not process video: %s", recording.error)
     else:
@@ -86,10 +85,11 @@ def analyse_recording(filename, output, unsure, dry):
             "Processing finished: %s (%s%% confidence, %ss) - %s",
             recording.matched_model,
             str(recording.confidence),
-            str(recording.processing_time),
+            str(round(recording.processing_time, 2)),
             recording.sorted_location,
         )
         logging.debug(recording)
+    recordings.append(recording)
     recording.close_video()
 
 
@@ -98,10 +98,10 @@ def analyse_folder(folder, output, unsure, dry):
         analyse_recording(os.path.join(folder, file), output, unsure, dry)
         for file in get_files(folder)
     ]
-    if len(failed_videos) > 0:
-        logging.warning(
-            str(len(failed_videos)) +
-            " video(s) failed to process, please check logs")
+    # if len(recordings) > 0:
+    #     logging.warning(
+    #         str(len(recordings)) +
+    #         " video(s) failed to process, please check logs")
 
 
 if __name__ == "__main__":
@@ -142,3 +142,5 @@ if __name__ == "__main__":
         analyse_folder(args.input, args.output, args.unsure, args.dry)
     else:
         analyse_recording(args.input, args.output, args.unsure, args.dry)
+
+    print_summary(recordings)
