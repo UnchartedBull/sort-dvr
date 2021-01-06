@@ -3,6 +3,7 @@ import time
 import asyncio
 from ffmpeg import FFmpeg
 from tqdm import tqdm
+import io
 
 average_bitrate = 0
 progressbar = None
@@ -11,6 +12,28 @@ progressbar = None
 class TQDMUpTo(tqdm):
     def update_to(self, frames=1):
         return self.update(frames - self.n)
+
+
+class TqdmToLogger(io.StringIO):
+    logger = None
+    level = None
+    first = True
+    buf = ''
+
+    def __init__(self, logger, level=None):
+        super(TqdmToLogger, self).__init__()
+        self.logger = logger
+        self.level = level or logging.INFO
+
+    def write(self, buf):
+        self.buf = buf.strip('\r\n\t ')
+
+    def flush(self):
+        if not self.first:
+            print("\x1b[1A\x1b[0J", end="\r")
+        else:
+            self.first = False
+        self.logger.log(self.level, self.buf)
 
 
 def calculate_timestamp_fps(frame, fps):
@@ -31,9 +54,13 @@ def render_video(
     global progressbar
 
     average_bitrate = 0
+    tqdm_out = TqdmToLogger(logging.getLogger(), level=logging.INFO)
     progressbar = TQDMUpTo(total=frames_to_render,
                            desc="Rendering video",
-                           unit="frame")
+                           unit="frame",
+                           file=tqdm_out,
+                           bar_format='{l_bar}{bar:50}{r_bar}{bar:-50b}',
+                           ascii=False)
 
     start = time.time()
 
@@ -71,7 +98,6 @@ def render_video(
 
     loop = asyncio.get_event_loop()
     loop.run_until_complete(ffmpeg.execute())
-    # loop.close()
     progressbar.close()
 
     logging.debug("Finished rendering in in %ss",
