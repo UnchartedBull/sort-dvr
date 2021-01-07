@@ -14,9 +14,6 @@ from render import render_video, calculate_timestamp_fps
 from summary import print_summary
 
 # TODO
-# split videos if uncolorful frames are in between for at least 10s
-# better testing for coloured frame (check frames around as well)
-# implement new colorful testing method
 # Database
 
 recordings = []
@@ -25,6 +22,7 @@ recordings = []
 def analyse_recording(filename,
                       output,
                       unsure,
+                      skip_split,
                       model,
                       dry,
                       start_frame=0,
@@ -37,15 +35,39 @@ def analyse_recording(filename,
 
         logging.debug("Analysing Video ...")
         (recording.fps,
-         recording.original_duration) = analyse_video(recording.video)
+         recording.original_duration) = analyse_video(recording.video,
+                                                      start_frame, end_frame)
         (recording.original_dimension,
          recording.dimension) = get_dimension(recording.video)
-        splits = check_for_split(recording.video, recording.fps)
-        # TODO
-        recording.start_frame = get_start_frame(recording.video)
-        recording.end_frame = get_end_frame(recording.video)
+
+        if not skip_split and start_frame == 0 and end_frame == 0:
+            splits = check_for_split(recording.video, recording.fps)
+            if recording.original_duration / (len(splits) + 1) < 120:
+                raise Exception('more than 1 split per 2m')
+            if len(splits) > 0:
+                logging.info(
+                    "Video contains %s recordings, splitting into different files",
+                    str(len(splits) + 1))
+                for i in range(len(splits) + 1):
+                    split_start_frame = splits[i - 1] if i > 0 else 0
+                    split_end_frame = splits[i] if i < len(
+                        splits
+                    ) else recording.fps * recording.original_duration
+                    logging.debug("Split %s from frame %s to %s", str(i + 1),
+                                  str(int(split_start_frame)),
+                                  str(int(split_end_frame)))
+                    analyse_recording(filename, output, unsure, skip_split,
+                                      model, dry, split_start_frame,
+                                      split_end_frame)
+                else:
+                    raise Exception('video is split')
+
+        recording.start_frame = get_start_frame(recording.video, start_frame)
+        recording.end_frame = get_end_frame(recording.video, end_frame)
         recording.duration = calculate_duration(
             recording.end_frame - recording.start_frame, recording.fps)
+        if recording.duration < 60:
+            raise Exception('start / end frame too close')
 
         if get_model_from_filename(recording.original_location) and not model:
             logging.debug("Using Modelname from file ...")
@@ -70,6 +92,13 @@ def analyse_recording(filename,
                 ".", "name-masks",
                 str(recording.uuid) + ".png")
             write_mask(recording.masked_image_path, masked_image)
+
+            if recording.match_similarity < 80 or recording.ocr_confidence < 65 or (
+                    90 <= recording.match_similarity <= 99
+                    and recording.ocr_confidence < 70) or (
+                        recording.match_similarity < 90
+                        and recording.ocr_confidence < 75):
+                raise Exception("unsure result")
         else:
             recording.confidence = 100
             recording.match_similarity = 100
@@ -90,12 +119,13 @@ def analyse_recording(filename,
         recording.size = get_file_size(recording.sorted_location)
 
     except Exception as e:
-        recording.error = e
+        recording.error = str(e)
         logging.debug(e, exc_info=True)
 
     if recording.has_errors():
         move_error_file(recording.original_location, unsure, dry)
-        logging.warning("Could not process video: %s", recording.error)
+        if recording.error != 'video is split':
+            logging.warning("Could not process video: %s", recording.error)
     else:
         logging.info(
             "Processing finished: %s (%s%% confidence, %ss) - %s",
@@ -107,13 +137,14 @@ def analyse_recording(filename,
 
     logging.debug(recording)
     recording.processing_finished()
-    recordings.append(recording)
+    if not recording.error or not recording.error == 'video is split':
+        recordings.append(recording)
 
 
-def analyse_folder(folder, output, unsure, model, dry):
+def analyse_folder(folder, output, unsure, skip_split, model, dry):
     [
-        analyse_recording(os.path.join(folder, file), output, unsure, model,
-                          dry) for file in get_files(folder)
+        analyse_recording(os.path.join(folder, file), output, unsure,
+                          skip_split, model, dry) for file in get_files(folder)
     ]
 
 
@@ -134,10 +165,13 @@ if __name__ == "__main__":
         help=
         "unsure folder which is used to store videos that could not be processed",
     )
+    parser.add_argument("--model", help="manually specify model (skip OCR)")
+    parser.add_argument("--skip_split",
+                        help="don't check for video splits",
+                        action="store_true")
     parser.add_argument("--dry",
                         help="don't render or move video files, just analyse",
                         action="store_true")
-    parser.add_argument("--model", help="manually specify model (skip OCR)")
     parser.add_argument("-d",
                         "--debug",
                         help="turn on debug log statements",
@@ -153,10 +187,10 @@ if __name__ == "__main__":
         sys.exit(-1)
 
     if is_folder(args.input):
-        analyse_folder(args.input, args.output, args.unsure, args.model,
-                       args.dry)
+        analyse_folder(args.input, args.output, args.unsure, args.skip_split,
+                       args.model, args.dry)
     else:
-        analyse_recording(args.input, args.output, args.unsure, args.model,
-                          args.dry)
+        analyse_recording(args.input, args.output, args.unsure,
+                          args.skip_split, args.model, args.dry)
 
     print_summary(recordings)

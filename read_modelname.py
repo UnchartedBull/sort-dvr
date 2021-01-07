@@ -102,9 +102,6 @@ def get_modelname(recording, start_frame, end_frame):
 
         frame_to_search += SEARCH_DISTANCE
 
-    if ocr_confidence < 75 or match_similarity < 80:
-        raise Exception("unsure result")
-
     return (ocr_text, ocr_confidence, matched_model, match_similarity,
             masked_image)
 

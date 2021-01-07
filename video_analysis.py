@@ -41,16 +41,16 @@ def check_for_split(recording, fps):
 
     logging.debug(
         "Found %s split(s) in %ss",
-        str(len(splits)),
+        str(len(splits) + 1),
         str(round(time.time() - start_time, 2)),
     )
 
     return splits
 
 
-def get_start_frame(recording):
+def get_start_frame(recording, start_frame):
     start_time = time.time()
-    frame_number = 0
+    frame_number = start_frame
     consecutive_color_frames = 0
 
     while frame_number < int(recording.get(cv2.CAP_PROP_FRAME_COUNT)) - 1:
@@ -77,9 +77,10 @@ def get_start_frame(recording):
     return frame_number
 
 
-def get_end_frame(recording):
+def get_end_frame(recording, end_frame):
     start_time = time.time()
-    frame_number = int(recording.get(cv2.CAP_PROP_FRAME_COUNT)) - 1
+    frame_number = int(recording.get(
+        cv2.CAP_PROP_FRAME_COUNT)) - 1 if end_frame == 0 else end_frame
     consecutive_color_frames = 0
 
     while frame_number > 0:
@@ -94,7 +95,7 @@ def get_end_frame(recording):
             consecutive_color_frames = 0
             frame_number -= 3
 
-    frame_number = frame_number - 2
+    frame_number = frame_number + 2
     if frame_number < 60:
         raise Exception("unable to find end frame")
 
@@ -130,9 +131,13 @@ def is_noise_frame(image, p=0.05, threshold=0.5):
     return saturation_percentage < threshold
 
 
-def analyse_video(recording):
+def analyse_video(recording, start_frame, end_frame):
     fps = recording.get(cv2.CAP_PROP_FPS)
-    duration = int(recording.get(cv2.CAP_PROP_FRAME_COUNT) / fps)
+    duration = 0
+    if start_frame != 0 or end_frame != 0:
+        duration = int((end_frame - start_frame) / fps)
+    else:
+        duration = int(recording.get(cv2.CAP_PROP_FRAME_COUNT) / fps)
     logging.debug("FPS: %s, Duration: %ss", fps, duration)
 
     if duration < MIN_VIDEO_DURATION:
