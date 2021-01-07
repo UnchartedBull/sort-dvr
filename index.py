@@ -7,7 +7,7 @@ import numpy as np
 
 from read_modelname import get_modelname, write_mask, get_model_from_filename
 from video_analysis import (analyse_video, get_start_frame, get_end_frame,
-                            calculate_duration, get_dimsension)
+                            calculate_duration, get_dimension, check_for_split)
 from recording import Recording
 from storage import exists, is_folder, get_next_filename, get_files, move_error_file, get_file_size
 from render import render_video, calculate_timestamp_fps
@@ -15,12 +15,20 @@ from summary import print_summary
 
 # TODO
 # split videos if uncolorful frames are in between for at least 10s
+# better testing for coloured frame (check frames around as well)
+# implement new colorful testing method
 # Database
 
 recordings = []
 
 
-def analyse_recording(filename, output, unsure, model, dry):
+def analyse_recording(filename,
+                      output,
+                      unsure,
+                      model,
+                      dry,
+                      start_frame=0,
+                      end_frame=0):
     global recordings
 
     recording = Recording(filename)
@@ -31,7 +39,9 @@ def analyse_recording(filename, output, unsure, model, dry):
         (recording.fps,
          recording.original_duration) = analyse_video(recording.video)
         (recording.original_dimension,
-         recording.dimension) = get_dimsension(recording.video)
+         recording.dimension) = get_dimension(recording.video)
+        splits = check_for_split(recording.video, recording.fps)
+        # TODO
         recording.start_frame = get_start_frame(recording.video)
         recording.end_frame = get_end_frame(recording.video)
         recording.duration = calculate_duration(
@@ -84,7 +94,7 @@ def analyse_recording(filename, output, unsure, model, dry):
         logging.debug(e, exc_info=True)
 
     if recording.has_errors():
-        move_error_file(recording.original_location, unsure)
+        move_error_file(recording.original_location, unsure, dry)
         logging.warning("Could not process video: %s", recording.error)
     else:
         logging.info(
