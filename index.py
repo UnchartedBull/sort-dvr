@@ -49,7 +49,7 @@ def analyse_recording(filename, output, unsure, skip_split, model, dry, start_fr
 
     extract_modelname(recording, model)
 
-    render_video(recording, output, dry, quality=30, audio_bitrate="32k")
+    render_video(recording, output, dry, quality=27, audio_bitrate="32k")
 
     get_recording_size(recording)
   except Exception as e:

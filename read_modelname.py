@@ -7,8 +7,6 @@ import re
 
 from fuzzy_match import match_modelname, load_modelnames
 
-SEARCH_DISTANCE = 120
-
 
 def dilate(image):
   kernel = np.ones((4, 4), np.uint8)
@@ -77,7 +75,7 @@ def is_unsure(match_similarity, ocr_confidence):
                                                          ) or (match_similarity < 90 and ocr_confidence < 75)
 
 
-def read_modelname(video, start_frame, end_frame):
+def read_modelname(video, start_frame, end_frame, search_distance):
   frame_to_search = start_frame
 
   ocr_text = None
@@ -88,7 +86,7 @@ def read_modelname(video, start_frame, end_frame):
 
   load_modelnames()
 
-  while frame_to_search + SEARCH_DISTANCE - 1 < end_frame:
+  while frame_to_search + search_distance - 1 < end_frame:
     video.set(cv2.CAP_PROP_POS_FRAMES, frame_to_search)
     _, frame = video.read()
     frame = resize_image(frame)
@@ -109,7 +107,7 @@ def read_modelname(video, start_frame, end_frame):
       matched_model = match
       match_similarity = similarity
 
-    frame_to_search += SEARCH_DISTANCE
+    frame_to_search += search_distance
 
   return (ocr_text, ocr_confidence, matched_model, match_similarity, masked_image)
 
@@ -134,14 +132,20 @@ def extract_modelname(recording, model):
     recording.matched_model = model
   else:
     logging.debug("Reading Modelname ...")
-    (
-        recording.ocr_text,
-        recording.ocr_confidence,
-        recording.matched_model,
-        recording.match_similarity,
-        masked_image,
-    ) = read_modelname(recording.video, recording.start_frame, recording.end_frame)
-    recording.confidence = round(np.mean([recording.ocr_confidence, recording.match_similarity]), 2)
+    masked_image = None
+    search_distance = recording.fps * 10
+
+    while is_unsure(recording.match_similarity, recording.ocr_confidence) and search_distance > recording.fps:
+      logging.debug("Searching with search distance %s frames", str(int(search_distance)))
+
+      (
+          recording.ocr_text,
+          recording.ocr_confidence,
+          recording.matched_model,
+          recording.match_similarity,
+          masked_image,
+      ) = read_modelname(recording.video, recording.start_frame, recording.end_frame, search_distance)
+      recording.confidence = round(np.mean([recording.ocr_confidence, recording.match_similarity]), 2)
 
     recording.masked_image_path = os.path.join(".", "name-masks", str(recording.uuid) + ".png")
     write_mask(recording.masked_image_path, masked_image)

@@ -27,7 +27,7 @@ def render_video(recording, output, dry, quality, audio_bitrate):
           'codec:v': 'libx265',
           'codec:a': 'eac3',
           'tag:v': 'hvc1',
-          'preset': 'medium',
+          'preset': 'fast',
           'crf': quality,
           'b:a': audio_bitrate,
           'vf': f'scale={recording.dimension}:flags=lanczos',
