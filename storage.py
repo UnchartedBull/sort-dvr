@@ -1,7 +1,7 @@
-import os
 from pathlib import Path
-import re
 import logging
+import os
+import re
 
 
 def exists(path) -> bool:
@@ -45,7 +45,7 @@ def get_next_filename(path):
 
 def get_file_size(path):
   if exists(path) and not is_folder(path):
-    return round(round(os.path.getsize(path) / (1024*1024), 3))
+    return round(round(os.path.getsize(path) / (1024 * 1024), 3))
   else:
     return 0
 
@@ -56,3 +56,8 @@ def move_error_file(path, unsure, dry):
     new_location = os.path.join(unsure, os.path.split(path)[1])
     logging.debug("Copying unsure file from %s to %s", path, new_location)
     os.rename(path, new_location)
+
+
+def get_recording_size(recording):
+  recording.original_size = get_file_size(recording.original_location)
+  recording.size = get_file_size(recording.sorted_location)

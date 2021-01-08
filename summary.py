@@ -1,7 +1,7 @@
 from tabulate import tabulate
-import logging
-import datetime
 from termcolor import colored
+import datetime
+import logging
 
 
 def print_summary(recordings):
@@ -24,3 +24,19 @@ def print_summary(recordings):
           ]
       )
   )
+
+
+def print_recording_stats(recording):
+  if recording.has_errors():
+    if recording.error != 'video is split':
+      logging.warning("Could not process video: %s", recording.error)
+  else:
+    logging.info(
+        "Processing finished: %s (%s%% confidence, %ss) - %s",
+        recording.matched_model,
+        str(recording.confidence),
+        str(round(recording.processing_time, 2)),
+        recording.sorted_location,
+    )
+
+  logging.debug(recording)

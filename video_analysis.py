@@ -1,6 +1,6 @@
 import cv2
-import numpy as np
 import logging
+import numpy as np
 import time
 
 MIN_VIDEO_DURATION = 60
@@ -49,7 +49,7 @@ def check_for_splits(recording):
       str(round(time.time() - start_time, 2)),
   )
 
-  if recording.original_duration / len(parts) < 120:
+  if parts and recording.original_duration / len(parts) < 120:
     raise Exception('more than 1 split per 2m')
 
   return parts
@@ -69,10 +69,10 @@ def get_next_color_frame(video, start, end, multiplier):
       if consecutive_color_frames > 3:
         break
 
-      frame_number = frame_number + (1*multiplier)
+      frame_number = frame_number + (1 * multiplier)
     else:
       consecutive_color_frames = 0
-      frame_number = frame_number + (3*multiplier)
+      frame_number = frame_number + (3 * multiplier)
 
   return int(frame_number + (-3 * multiplier))
 
