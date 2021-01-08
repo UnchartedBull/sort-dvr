@@ -54,15 +54,11 @@ def render_video(
     global progressbar
 
     average_bitrate = 0
-    tqdm_out = TqdmToLogger(logging.getLogger(), level=logging.INFO)
-    progressbar = TQDMUpTo(total=frames_to_render,
-                           desc="Rendering video",
-                           unit="frame",
-                           file=tqdm_out,
-                           bar_format='{l_bar}{bar:50}{r_bar}{bar:-50b}',
-                           ascii=False)
 
     start = time.time()
+
+    logging.debug("Rendering video from %ss to %ss", str(start_time),
+                  str(end_time))
 
     ffmpeg = FFmpeg().input(input_path).output(
         output_path, {
@@ -74,7 +70,7 @@ def render_video(
             'b:a': audio_bitrate,
             'vf': f'scale={new_resolution}:flags=lanczos',
             'ss': start_time,
-            't': end_time
+            'to': end_time
         })
 
     @ffmpeg.on('progress')
@@ -97,6 +93,13 @@ def render_video(
         raise Exception('ffmpeg exited with ' + code)
 
     loop = asyncio.get_event_loop()
+    tqdm_out = TqdmToLogger(logging.getLogger(), level=logging.INFO)
+    progressbar = TQDMUpTo(total=frames_to_render + 1,
+                           desc="Rendering video",
+                           unit="frame",
+                           file=tqdm_out,
+                           bar_format='{l_bar}{bar:50}{r_bar}{bar:-50b}',
+                           ascii=False)
     loop.run_until_complete(ffmpeg.execute())
     progressbar.close()
 

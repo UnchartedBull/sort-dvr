@@ -53,8 +53,8 @@ def get_file_size(path):
 
 
 def move_error_file(path, unsure, dry):
-    if not dry:
+    if not dry and exists(path):
         create_if_not_exist(unsure)
         new_location = os.path.join(unsure, os.path.split(path)[1])
-        logging.debug("Moving unsure file from %s to %s", path, new_location)
+        logging.debug("Copying unsure file from %s to %s", path, new_location)
         os.rename(path, new_location)

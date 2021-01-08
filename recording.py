@@ -4,7 +4,7 @@ import cv2
 import logging
 import datetime
 
-from storage import is_video
+from storage import is_video, exists
 
 
 class Recording:
@@ -28,11 +28,12 @@ class Recording:
         relative_size = round(self.size / max(self.original_size, 1) * 100, 1)
         return 100 - relative_size if relative_size > 0 and relative_size < 100 else 0
 
-    def __init__(self, location) -> None:
+    def __init__(self, location, is_part_of_split=False) -> None:
         self._uuid = uuid.uuid1()
         self._start = time.time()
         self._video = None
         self._processing_time = None
+        self.is_part_of_split = is_part_of_split
         self.original_location = location
         self.sorted_location = None
         self.start_frame = None
@@ -78,6 +79,7 @@ class Recording:
   Matched Model:        {self.matched_model}
   Match Similarity:     {self.match_similarity}%
   Error:                {self.error}
+  Part of Split:        {self.is_part_of_split}
   Processing Time:      {str(datetime.timedelta(seconds=self.processing_time))}
   Confidence:           {self.confidence}%
     """
@@ -86,6 +88,8 @@ class Recording:
         return self.error is not None
 
     def open_video(self) -> None:
+        if not exists(self.original_location):
+            raise Exception('Video File not readable')
         if not is_video(self.original_location):
             raise Exception("file is no video (.mp4, .mov, .avi, .mkv)")
         self._video = cv2.VideoCapture(self.original_location)

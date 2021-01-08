@@ -2,16 +2,17 @@ import logging
 import coloredlogs
 import os
 import sys
-import argparse
 import numpy as np
 
 from read_modelname import get_modelname, write_mask, get_model_from_filename
 from video_analysis import (analyse_video, get_start_frame, get_end_frame,
-                            calculate_duration, get_dimension, check_for_split)
+                            calculate_duration, get_dimension,
+                            check_for_splits)
 from recording import Recording
 from storage import exists, is_folder, get_next_filename, get_files, move_error_file, get_file_size
 from render import render_video, calculate_timestamp_fps
 from summary import print_summary
+from parser import setup_parser
 
 # TODO
 # Database
@@ -29,10 +30,12 @@ def analyse_recording(filename,
                       end_frame=0):
     global recordings
 
-    recording = Recording(filename)
+    recording = Recording(
+        filename, True if start_frame != 0 or end_frame != 0 else False)
     try:
         recording.open_video()
 
+        ### BASIC ANALYSIS ###
         logging.debug("Analysing Video ...")
         (recording.fps,
          recording.original_duration) = analyse_video(recording.video,
@@ -40,28 +43,24 @@ def analyse_recording(filename,
         (recording.original_dimension,
          recording.dimension) = get_dimension(recording.video)
 
+        ### DETECTING SPLITS ###
         if not skip_split and start_frame == 0 and end_frame == 0:
-            splits = check_for_split(recording.video, recording.fps)
-            if recording.original_duration / (len(splits) + 1) < 120:
+            parts = check_for_splits(recording.video, recording.fps)
+            if recording.original_duration / len(parts) < 120:
                 raise Exception('more than 1 split per 2m')
-            if len(splits) > 0:
+            if parts:
+                recording.processing_finished()
                 logging.info(
                     "Video contains %s recordings, splitting into different files",
-                    str(len(splits) + 1))
-                for i in range(len(splits) + 1):
-                    split_start_frame = splits[i - 1] if i > 0 else 0
-                    split_end_frame = splits[i] if i < len(
-                        splits
-                    ) else recording.fps * recording.original_duration
-                    logging.debug("Split %s from frame %s to %s", str(i + 1),
-                                  str(int(split_start_frame)),
-                                  str(int(split_end_frame)))
+                    str(len(parts)))
+                for part in parts:
+                    logging.debug("Video Part from frame %s to %s",
+                                  str(int(part[0])), str(int(part[1])))
                     analyse_recording(filename, output, unsure, skip_split,
-                                      model, dry, split_start_frame,
-                                      split_end_frame)
-                else:
-                    raise Exception('video is split')
+                                      model, dry, part[0], part[1])
+                raise Exception('video is split')
 
+        ### REMOVING NOISE FROM START AND END ###
         recording.start_frame = get_start_frame(recording.video, start_frame)
         recording.end_frame = get_end_frame(recording.video, end_frame)
         recording.duration = calculate_duration(
@@ -69,6 +68,7 @@ def analyse_recording(filename,
         if recording.duration < 60:
             raise Exception('start / end frame too close')
 
+        ### GET MODELNAME ###
         if get_model_from_filename(recording.original_location) and not model:
             logging.debug("Using Modelname from file ...")
             recording.confidence = 100
@@ -105,6 +105,7 @@ def analyse_recording(filename,
             recording.ocr_text = "PARAMETER"
             recording.matched_model = model
 
+        ### RENDERING ###
         logging.debug("Rendering Video ...")
         recording.sorted_location = get_next_filename(
             os.path.join(output, recording.matched_model))
@@ -115,6 +116,8 @@ def analyse_recording(filename,
                 calculate_timestamp_fps(recording.end_frame, recording.fps),
                 recording.end_frame - recording.start_frame,
                 recording.dimension)
+
+        ### FILE SIZES ###
         recording.original_size = get_file_size(recording.original_location)
         recording.size = get_file_size(recording.sorted_location)
 
@@ -122,8 +125,8 @@ def analyse_recording(filename,
         recording.error = str(e)
         logging.debug(e, exc_info=True)
 
+    ### CHECKING PROCESSING STATUS ###
     if recording.has_errors():
-        move_error_file(recording.original_location, unsure, dry)
         if recording.error != 'video is split':
             logging.warning("Could not process video: %s", recording.error)
     else:
@@ -137,7 +140,7 @@ def analyse_recording(filename,
 
     logging.debug(recording)
     recording.processing_finished()
-    if not recording.error or not recording.error == 'video is split':
+    if not recording.has_errors() or not recording.error == 'video is split':
         recordings.append(recording)
 
 
@@ -149,35 +152,7 @@ def analyse_folder(folder, output, unsure, skip_split, model, dry):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="easily sort your dvr recordings without any effort")
-    parser.add_argument("input",
-                        type=str,
-                        help="input folder or file which should be processed")
-    parser.add_argument(
-        "output",
-        type=str,
-        help="output folder to which the sorted recordings should be saved",
-    )
-    parser.add_argument(
-        "unsure",
-        type=str,
-        help=
-        "unsure folder which is used to store videos that could not be processed",
-    )
-    parser.add_argument("--model", help="manually specify model (skip OCR)")
-    parser.add_argument("--skip_split",
-                        help="don't check for video splits",
-                        action="store_true")
-    parser.add_argument("--dry",
-                        help="don't render or move video files, just analyse",
-                        action="store_true")
-    parser.add_argument("-d",
-                        "--debug",
-                        help="turn on debug log statements",
-                        action="store_true")
-
-    args = parser.parse_args()
+    args = setup_parser().parse_args()
 
     coloredlogs.install(fmt="%(asctime)s %(levelname)s %(message)s",
                         level=logging.DEBUG if args.debug else logging.INFO)
@@ -192,5 +167,10 @@ if __name__ == "__main__":
     else:
         analyse_recording(args.input, args.output, args.unsure,
                           args.skip_split, args.model, args.dry)
+
+    for recording in recordings:
+        if recording.has_errors(
+        ) and recording.error != 'video is split' and not recording.is_part_of_split:
+            move_error_file(recording.original_location, args.unsure, args.dry)
 
     print_summary(recordings)

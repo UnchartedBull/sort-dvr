@@ -7,13 +7,13 @@ MIN_VIDEO_DURATION = 60
 MIN_NOISE_DURATION_FOR_SPLIT = 10
 
 
-def check_for_split(recording, fps):
+def check_for_splits(recording, fps):
     start_time = time.time()
     frame_number = fps
     consecutive_noise_frames = 0
     consecutive_color_frames = 0
     split_added = False
-    splits = []
+    parts = []
 
     while frame_number < int(recording.get(cv2.CAP_PROP_FRAME_COUNT)) - 1:
         recording.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
@@ -27,7 +27,10 @@ def check_for_split(recording, fps):
                 logging.debug("Found video split around frame %s",
                               int(frame_to_split))
 
-                splits.append(frame_to_split)
+                parts.append([
+                    0 if not parts else parts[len(parts) - 1][1],
+                    int(frame_to_split)
+                ])
                 split_added = True
         else:
             consecutive_color_frames += 1
@@ -39,13 +42,19 @@ def check_for_split(recording, fps):
                 consecutive_color_frames = 0
         frame_number += fps
 
+    if parts:
+        parts.append([
+            parts[len(parts) - 1][1],
+            int(recording.get(cv2.CAP_PROP_FRAME_COUNT))
+        ])
+
     logging.debug(
         "Found %s split(s) in %ss",
-        str(len(splits) + 1),
+        str(len(parts)),
         str(round(time.time() - start_time, 2)),
     )
 
-    return splits
+    return parts
 
 
 def get_start_frame(recording, start_frame):
@@ -65,7 +74,7 @@ def get_start_frame(recording, start_frame):
             consecutive_color_frames = 0
             frame_number += 3
 
-    frame_number = frame_number - 2
+    frame_number = int(frame_number - 2)
     if frame_number > int(recording.get(cv2.CAP_PROP_FRAME_COUNT)) - 60:
         raise Exception("unable to find start frame")
 
@@ -95,7 +104,7 @@ def get_end_frame(recording, end_frame):
             consecutive_color_frames = 0
             frame_number -= 3
 
-    frame_number = frame_number + 2
+    frame_number = int(frame_number + 2)
     if frame_number < 60:
         raise Exception("unable to find end frame")
 
@@ -121,10 +130,9 @@ def calculate_duration(frames, fps):
     return int(frames / fps)
 
 
-def is_noise_frame(image, p=0.05, threshold=0.5):
+def is_noise_frame(image, p=0.05, threshold=0.6):
     image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     s = cv2.calcHist([image], [1], None, [256], [0, 256])
-    # p = 0.15
     saturation_percentage = np.sum(s[int(p * 255):-1]) / np.prod(
         image.shape[0:2])
 
