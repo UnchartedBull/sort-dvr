@@ -10,34 +10,34 @@ progressbar = None
 
 
 class TQDMUpTo(tqdm):
-    def update_to(self, frames=1):
-        return self.update(frames - self.n)
+  def update_to(self, frames=1):
+    return self.update(frames - self.n)
 
 
 class TqdmToLogger(io.StringIO):
-    logger = None
-    level = None
-    first = True
-    buf = ''
+  logger = None
+  level = None
+  first = True
+  buf = ''
 
-    def __init__(self, logger, level=None):
-        super(TqdmToLogger, self).__init__()
-        self.logger = logger
-        self.level = level or logging.INFO
+  def __init__(self, logger, level=None):
+    super(TqdmToLogger, self).__init__()
+    self.logger = logger
+    self.level = level or logging.INFO
 
-    def write(self, buf):
-        self.buf = buf.strip('\r\n\t ')
+  def write(self, buf):
+    self.buf = buf.strip('\r\n\t ')
 
-    def flush(self):
-        if not self.first:
-            print("\x1b[1A\x1b[0J", end="\r")
-        else:
-            self.first = False
-        self.logger.log(self.level, self.buf)
+  def flush(self):
+    if not self.first:
+      print("\x1b[1A\x1b[0J", end="\r")
+    else:
+      self.first = False
+    self.logger.log(self.level, self.buf)
 
 
 def calculate_timestamp_fps(frame, fps):
-    return round(frame / fps, 2)
+  return round(frame / fps, 2)
 
 
 def render_video(
@@ -50,60 +50,61 @@ def render_video(
     quality=30,
     audio_bitrate="32k",
 ):
+  global average_bitrate
+  global progressbar
+
+  average_bitrate = 0
+
+  start = time.time()
+
+  logging.debug("Rendering video from %ss to %ss", str(start_time), str(end_time))
+
+  ffmpeg = FFmpeg().input(input_path).output(
+      output_path, {
+          'codec:v': 'libx265',
+          'codec:a': 'eac3',
+          'tag:v': 'hvc1',
+          'preset': 'medium',
+          'crf': quality,
+          'b:a': audio_bitrate,
+          'vf': f'scale={new_resolution}:flags=lanczos',
+          'ss': start_time,
+          'to': end_time
+      }
+  )
+
+  @ffmpeg.on('progress')
+  def on_progress(progress):
     global average_bitrate
     global progressbar
 
-    average_bitrate = 0
+    progressbar.update_to(progress.frame)
+    if average_bitrate == 0:
+      average_bitrate = progress.bitrate
+    else:
+      average_bitrate = round((average_bitrate + progress.bitrate) / 2)
 
-    start = time.time()
+  @ffmpeg.on('terminated')
+  def on_terminated():
+    raise Exception('ffmpeg was externally terminated')
 
-    logging.debug("Rendering video from %ss to %ss", str(start_time),
-                  str(end_time))
+  @ffmpeg.on('error')
+  def on_error(code):
+    raise Exception('ffmpeg exited with ' + code)
 
-    ffmpeg = FFmpeg().input(input_path).output(
-        output_path, {
-            'codec:v': 'libx265',
-            'codec:a': 'eac3',
-            'tag:v': 'hvc1',
-            'preset': 'medium',
-            'crf': quality,
-            'b:a': audio_bitrate,
-            'vf': f'scale={new_resolution}:flags=lanczos',
-            'ss': start_time,
-            'to': end_time
-        })
+  loop = asyncio.get_event_loop()
+  tqdm_out = TqdmToLogger(logging.getLogger(), level=logging.INFO)
+  progressbar = TQDMUpTo(
+      total=frames_to_render + 1,
+      desc="Rendering video",
+      unit="frame",
+      file=tqdm_out,
+      bar_format='{l_bar}{bar:50}{r_bar}{bar:-50b}',
+      ascii=False
+  )
+  loop.run_until_complete(ffmpeg.execute())
+  progressbar.close()
 
-    @ffmpeg.on('progress')
-    def on_progress(progress):
-        global average_bitrate
-        global progressbar
+  logging.debug("Finished rendering in in %ss", str(round(time.time() - start, 2)))
 
-        progressbar.update_to(progress.frame)
-        if average_bitrate == 0:
-            average_bitrate = progress.bitrate
-        else:
-            average_bitrate = round((average_bitrate + progress.bitrate) / 2)
-
-    @ffmpeg.on('terminated')
-    def on_terminated():
-        raise Exception('ffmpeg was externally terminated')
-
-    @ffmpeg.on('error')
-    def on_error(code):
-        raise Exception('ffmpeg exited with ' + code)
-
-    loop = asyncio.get_event_loop()
-    tqdm_out = TqdmToLogger(logging.getLogger(), level=logging.INFO)
-    progressbar = TQDMUpTo(total=frames_to_render + 1,
-                           desc="Rendering video",
-                           unit="frame",
-                           file=tqdm_out,
-                           bar_format='{l_bar}{bar:50}{r_bar}{bar:-50b}',
-                           ascii=False)
-    loop.run_until_complete(ffmpeg.execute())
-    progressbar.close()
-
-    logging.debug("Finished rendering in in %ss",
-                  str(round(time.time() - start, 2)))
-
-    return average_bitrate
+  return average_bitrate

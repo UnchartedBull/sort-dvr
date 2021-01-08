@@ -3,6 +3,7 @@ from fuzzywuzzy import fuzz
 
 MODELNAMES = None
 
+
 def load_modelnames():
   global MODELNAMES
 

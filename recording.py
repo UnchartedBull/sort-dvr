@@ -28,16 +28,16 @@ class Recording:
         relative_size = round(self.size / max(self.original_size, 1) * 100, 1)
         return 100 - relative_size if relative_size > 0 and relative_size < 100 else 0
 
-    def __init__(self, location, is_part_of_split=False) -> None:
+    def __init__(self, location, start_frame, end_frame) -> None:
         self._uuid = uuid.uuid1()
         self._start = time.time()
         self._video = None
         self._processing_time = None
-        self.is_part_of_split = is_part_of_split
+        self.is_part_of_split = True if start_frame != 0 or end_frame != 0 else False
         self.original_location = location
         self.sorted_location = None
-        self.start_frame = None
-        self.end_frame = None
+        self.start_frame = start_frame
+        self.end_frame = end_frame
         self.fps = 0
         self.original_duration = 0
         self.duration = 0
