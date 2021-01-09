@@ -31,7 +31,7 @@ By default sort-dvr will search the red area in the image for the name, this wor
 
 You can view the cutout generated in the `name-masks` folder and adjust your cutout according to that.
 
-![dvr name location](https://github.com/UnchartedBull/sort-dvr/blob/master/dvr-name-position.jpg?raw=true)
+![dvr name location](https://github.com/UnchartedBull/sort-dvr/blob/main/dvr-name-position.png?raw=true)
 
 ## Installation
 
