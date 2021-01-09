@@ -31,7 +31,7 @@ By default sort-dvr will search the red area in the image for the name, this wor
 
 You can view the cutout generated in the `name-masks` folder and adjust your cutout according to that.
 
-![dvr name location](https://github.com/UnchartedBull/sort-dvr/blob/main/dvr-name-position.png?raw=true)
+![dvr name location](https://github.com/UnchartedBull/sort-dvr/blob/main/pictures/dvr-name-position.png?raw=true)
 
 ## Installation
 
@@ -69,13 +69,17 @@ optional arguments:
   --debug               turn on debug log statements
 ```
 
+You also need to create a file called `modelnames.csv` which contains a comma-separated list of your modelnames.
+
 ### TL;DR
 
-Create 3 sub-folders (input, output, unsure) and put your dvr recordings in the input folder then run: `python3 index.py ./input ./output ./unsure`. Go grab a coffee and wait.
+Create 3 sub-folders (input, output, unsure), create `modelnames.csv` and put your dvr recordings in the input folder then run: `python3 index.py ./input ./output ./unsure`. Go grab a coffee and wait.
 
 ## Example
 
 Processing of 4 DVR recordings (2 containing one video each and 1 containing 3 videos). The videos are from four different quads. `VID0002.AVI` does not have any name in the DVR recording, while the other three all have the model name in the specified area.
+
+![example output](https://github.com/UnchartedBull/sort-dvr/blob/main/pictures/example-output.png?raw=true)
 
 ## Hardware Requirements
 
