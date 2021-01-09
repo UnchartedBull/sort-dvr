@@ -147,6 +147,8 @@ def extract_modelname(recording, model):
       ) = read_modelname(recording.video, recording.start_frame, recording.end_frame, search_distance)
       recording.confidence = round(np.mean([recording.ocr_confidence, recording.match_similarity]), 2)
 
+      search_distance = search_distance / 2
+
     recording.masked_image_path = os.path.join(".", "name-masks", str(recording.uuid) + ".png")
     write_mask(recording.masked_image_path, masked_image)
 

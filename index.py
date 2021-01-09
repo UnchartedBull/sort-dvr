@@ -19,10 +19,10 @@ from video_analysis import (
 recordings = []
 
 
-def analyse_recording(filename, output, unsure, skip_split, model, dry, start_frame=0, end_frame=0):
+def analyse_recording(file, args, start_frame=0, end_frame=0):
   global recordings
 
-  recording = Recording(filename, start_frame, end_frame)
+  recording = Recording(file, start_frame, end_frame)
   try:
     recording.open_video()
 
@@ -30,7 +30,7 @@ def analyse_recording(filename, output, unsure, skip_split, model, dry, start_fr
     analyse_video(recording)
     get_dimension(recording)
 
-    if not skip_split and start_frame == 0 and end_frame == 0:
+    if not args.skip_split and start_frame == 0 and end_frame == 0:
       parts = check_for_splits(recording)
 
       if parts:
@@ -39,7 +39,7 @@ def analyse_recording(filename, output, unsure, skip_split, model, dry, start_fr
 
         for part in parts:
           logging.debug("Video Part from frame %s to %s", str(int(part[0])), str(int(part[1])))
-          analyse_recording(filename, output, unsure, skip_split, model, dry, part[0], part[1])
+          analyse_recording(file, args, part[0], part[1])
 
         raise Exception('video is split')
 
@@ -47,9 +47,9 @@ def analyse_recording(filename, output, unsure, skip_split, model, dry, start_fr
     get_end_frame(recording)
     calculate_duration(recording)
 
-    extract_modelname(recording, model)
+    extract_modelname(recording, args.model)
 
-    render_video(recording, output, dry, quality=27, audio_bitrate="32k")
+    render_video(recording, args.output, args.dry_run, quality=args.x265_quality, audio_bitrate=args.audio_bitrate)
 
     get_recording_size(recording)
   except Exception as e:
@@ -64,8 +64,8 @@ def analyse_recording(filename, output, unsure, skip_split, model, dry, start_fr
     recordings.append(recording)
 
 
-def analyse_folder(folder, output, unsure, skip_split, model, dry):
-  [analyse_recording(os.path.join(folder, file), output, unsure, skip_split, model, dry) for file in get_files(folder)]
+def analyse_folder(args):
+  [analyse_recording(os.path.join(args.input, file), args) for file in get_files(args.input)]
 
 
 if __name__ == "__main__":
@@ -78,12 +78,12 @@ if __name__ == "__main__":
     sys.exit(-1)
 
   if is_folder(args.input):
-    analyse_folder(args.input, args.output, args.unsure, args.skip_split, args.model, args.dry)
+    analyse_folder(args)
   else:
-    analyse_recording(args.input, args.output, args.unsure, args.skip_split, args.model, args.dry)
+    analyse_recording(args.input, args)
 
   for recording in recordings:
     if recording.has_errors() and recording.error != 'video is split' and not recording.is_part_of_split:
-      move_error_file(recording.original_location, args.unsure, args.dry)
+      move_error_file(recording.original_location, args.unsure, args.dry_run)
 
   print_summary(recordings)

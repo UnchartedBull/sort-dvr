@@ -13,6 +13,7 @@ def is_folder(path) -> bool:
 
 
 def is_video(path) -> None:
+  path = path.lower()
   return (".mp4" not in path or ".mov" not in path or ".avi" not in path or ".mkv" not in path)
 
 
